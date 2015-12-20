@@ -1,25 +1,110 @@
 ---
-title: "Reproducible Research: Peer Assessment 1"
-output: 
-  html_document:
-    keep_md: true
+title: "Reproducible Research Peer Assessment 1"
+author: "Monali Mujumdar"
+date: "December 19, 2015"
+output: html_document
 ---
 
 
-## Loading and preprocessing the data
+This document describes some analysis done using a personal activity monitoring device. The data used for the assignment is the 'Activity Monitoring Data' downloaded from the Coursera website. The dataset contains the number of steps taken daily in 5-minute interval for a 2-month period. There are three columns: Steps, Date, and Interval.
+
+###Q1. What is mean total number of steps taken per day?
+
+The following code loads the data into a data frame 'activity_table', calculates the number of steps taken each day, and then plots its histogram. It also computes the mean and median of the number of steps.
+
+```{r}
+activity_table<-read.csv("./data/repdata-data-activity/activity.csv",header = TRUE,sep=",")
+sumdat <- tapply(activity_table$steps,activity_table$date, sum, na.rm = TRUE)
+hist(sumdat,breaks = 50, main="Histogram of Number of Steps Taken Everyday from 10/01/2012 to 11/30/2012",
+      xlab="Number of Steps",xlim=c(0,25000),col="blue")
+
+meanSteps = round(mean(sumdat),2)
+medianSteps = median(sumdat)
+
+```
+The mean of number of steps is `r meanSteps` and median is `r medianSteps`.
+
+###Q2. What is the average daily activity pattern?
+
+The following code computes the average of the number of steps taken in each 5-min interval across all days. 
+
+```{r}
+Interval_number=rep(c(1:288),61) ##creates a vector of interval numbers (from 1 to 288) for each day. 
+
+activity_table<-cbind(activity_table,"Interval Number" =Interval_number) ##appends the vector to the data frame
+
+avg_step_per_interval<-tapply(activity_table$steps,activity_table$`Interval Number`,mean,na.rm=TRUE) ##computes the mean of number of steps for each interval
+
+interval=c(1:288) #used for plotting only
+plot(interval,avg_step_per_interval,type="l",main="Average Number of Steps taken at each 5-min Interval across all days",
+     xlab="Interval",ylab="Number of Steps")
+
+xind<-which.max(avg_step_per_interval) ##index of the interval with max number of steps
+```
+The `r xind`th interval has the maximum number of steps `r round(max(avg_step_per_interval),2)`
 
 
+###Q3. Inputting missing values
 
-## What is mean total number of steps taken per day?
+```{r}
+numNA<- sum(is.na(activity_table$steps))
+```
+
+There are `r numNA` NA values in the 'Steps' column of the dataset.
+
+The following code replaces the missing values (NAs)by the mean of the number of steps for that interval
+
+```{r}
+activity_table<-cbind("Modified_Step"=activity_table$steps,activity_table) #creates a copy of the 'Steps' column
+
+for( i in 1 : length(activity_table$steps)){
+  
+  if (is.na(activity_table$Modified_Step[i])){
+    int_num<-activity_table$`Interval Number`[i]
+    activity_table$Modified_Step[i] <- as.integer(ceiling(avg_step_per_interval[int_num]))
+  }
+   
+}
+
+modified_activity_table<-activity_table[,c(1,2,3)] #modified dataset with the missing values filled in
+```
+
+The following code compares the histogram of the modified number of steps after the missing values filled it, with that of the original number of steps. For ease of comparison, the original histogram is plotted again
+```{r fig.width=8, fig.height=6}
+sumdat_mod <- tapply(activity_table$Modified_Step,activity_table$date, sum, na.rm = TRUE)
+
+par(mfcol=c(2,1))
+hist(sumdat,breaks = 50, main="Histogram of Number of Steps",
+     xlab="Number of Steps",xlim=c(0,25000),col="blue")
+
+hist(sumdat_mod,breaks = 50, main="Modified Histogram of Number of Steps",
+     xlab="Number of Steps",xlim=c(0,25000),col="green")
+
+meanSteps_mod = round(mean(sumdat_mod),2)
+medianSteps_mod = median(sumdat_mod)
+```
+The mean of the number of steps is `r meanSteps_mod` and the median is `r medianSteps_mod`. Both these values are higher than the original values.The shape of the histogram with the modified data was similar to that of the original and had fewer zero values.Since the NA values are replaced by the mean of the interval, and the mean of the data is around 10,800 steps, there is an increase in the number of occurences in that range. 
+
+###Are there differences in activity patterns between weekdays and weekends?
+The following code adds another factor column with 'weekday' and 'weekend' information to the dataset. The average number of steps for each interval is plotted for 'weekend' and 'weekday'.
+
+```{r}
+daysdat<-activity_table$date
+weekdaysdat<-weekdays(as.Date(daysdat,'%Y-%m-%d'))
+weekdayslist <- c('Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday')
+daysstat<-factor(weekdaysdat %in% weekdayslist, 
+                        levels=c(FALSE, TRUE), labels=c('weekend', 'weekday'))
+
+activity_table<-cbind("DayStat"=daysstat,activity_table)
+
+weekend_weekday_data<-tapply(activity_table$Modified_Step,list(activity_table$`Interval Number`, activity_table$DayStat), mean)
+
+par(mfcol=c(2,1))
+plot(interval,weekend_weekday_data[,2],type="l",main="Average Number of Steps taken at each 5-min Interval on Weekdays", xlab="Interval",ylab="Number of Steps",col="blue")
+
+plot(interval,weekend_weekday_data[,1],type="l",main="Average Number of Steps taken at each 5-min Interval on Weekends",xlab="Interval",ylab="Number of Steps",col="magenta")
+
+```
+From the plots, it is clear that the number of steps taken for intervals 100 to 250 is more on weekends as compared to weekdays. This indicates that the individual is more active on weekends than weekdays.  
 
 
-
-## What is the average daily activity pattern?
-
-
-
-## Imputing missing values
-
-
-
-## Are there differences in activity patterns between weekdays and weekends?
